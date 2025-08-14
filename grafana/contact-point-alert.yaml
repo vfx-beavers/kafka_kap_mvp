@@ -1,0 +1,10 @@
+apiVersion: 1
+contactPoints:
+    - orgId: 1
+      name: Alert
+      receivers:
+        - uid: beuq7mynveosga
+          type: prometheus-alertmanager
+          settings:
+            url: http://alertmanager:9093
+          disableResolveMessage: false
