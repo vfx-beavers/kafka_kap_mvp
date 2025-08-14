@@ -1,0 +1,496 @@
+services:
+ zookeeper-1:
+   image: confluentinc/cp-zookeeper:7.4.0
+   hostname: zookeeper-1
+   container_name: zookeeper-1
+   ports:
+     - "2181:2181"
+   networks:
+     - cheburnet
+   environment:
+     ZOOKEEPER_SERVER_ID: 1 # main
+     ZOOKEEPER_REQUIRE_CLIENT_AUTH_SCHEME: "sasl"
+     ZOOKEEPER_SASL_ENABLED: "true"
+     ZOOKEEPER_CLIENT_PORT: 2181
+     ZOOKEEPER_TICK_TIME: 2000
+     ZOOKEEPER_JUTE_MAXBUFFER: 1500725856
+     KAFKA_OPTS: -Djava.security.auth.login.config=/etc/zookeeper/secrets/zookeeper.sasl.jaas.conf
+       -Dzookeeper.authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider
+       -Dzookeeper.allowSaslFailedClients=false
+       -Dzookeeper.requireClientAuthScheme=sasl
+       -DjaasLoginRenew=3600000
+   volumes:
+     - ./ssl/zookeeper.sasl.jaas.conf:/etc/zookeeper/secrets/zookeeper.sasl.jaas.conf
+     - ./ssl:/etc/zookeeper/secrets
+
+
+ zookeeper-2:
+   image: confluentinc/cp-zookeeper:7.4.0
+   container_name: zookeeper-2
+   hostname: zookeeper-2
+   ports:
+     - "2184:2184"
+   networks:
+     - cheburnet
+   environment:
+     ZOOKEEPER_SERVER_ID: 2 # mirror
+     ZOOKEEPER_CLIENT_PORT: 2184
+     ZOOKEEPER_TICK_TIME: 2000
+     ZOOKEEPER_JUTE_MAXBUFFER: 1500725856
+   volumes:
+     - ./ssl:/etc/zookeeper/secrets
+
+
+ kafka111:
+   image: confluentinc/cp-server:7.4.0
+   restart: always
+   hostname: kafka111
+   container_name: kafka111
+   depends_on:
+     - zookeeper-1
+   ports:
+     - "9092:9092"
+     - "9093:9093"
+     - "29092:29092"
+   environment:
+     KAFKA_BROKER_ID: 1
+     KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:2181 
+     KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+     KAFKA_DELETE_TOPIC_ENABLE: true
+     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+     KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,SASL_SSL://0.0.0.0:9093,EXTERNAL://0.0.0.0:29092
+     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka111:9092,SASL_SSL://kafka111:9093,EXTERNAL://localhost:29092
+     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,SASL_SSL:SASL_SSL,EXTERNAL:PLAINTEXT
+     KAFKA_LISTENER_SECURITY_PROTOCOL: SASL_SSL
+     KAFKA_INTER_BROKER_LISTENER_NAME: SASL_SSL
+     KAFKA_SSL_KEYSTORE_FILENAME: kafka111.keystore.pkcs12
+     KAFKA_SSL_KEYSTORE_CREDENTIALS: kafka111_keystore_creds
+     KAFKA_SSL_KEY_CREDENTIALS: kafka111_sslkey_creds
+     KAFKA_SSL_TRUSTSTORE_FILENAME: kafka111.truststore.jks
+     KAFKA_SSL_TRUSTSTORE_CREDENTIALS: kafka111_truststore_creds
+     KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: https
+     KAFKA_SSL_CLIENT_AUTH: "required"
+     KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+     KAFKA_SUPER_USERS: "User:admin"
+     KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+     KAFKA_OPTS: -Djava.security.auth.login.config=/etc/kafka/secrets/kafka.sasl.jaas.conf
+                 -javaagent:/opt/jmx_prometheus_javaagent-0.20.0.jar=7071:/opt/kafka-metrics.yml
+     KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
+     KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "false"
+     KAFKA_SCHEMA_REGISTRY_URL: "schema-registry:8081"
+   volumes:
+     - ./monitoring/jmx_prometheus_javaagent-0.20.0.jar:/opt/jmx_prometheus_javaagent-0.20.0.jar
+     - ./monitoring/kafka-metrics.yml:/opt/kafka-metrics.yml
+     - ./ssl/kafka.sasl.jaas.conf:/etc/kafka/config/kafka.sasl.jaas.conf
+     - ./ssl:/etc/kafka/secrets
+     - ./setup:/setup
+   networks:
+      - cheburnet
+      
+      
+ kafka222:
+   image: confluentinc/cp-server:7.4.0
+   restart: always
+   hostname: kafka222
+   container_name: kafka222
+   depends_on:
+     - zookeeper-1
+   ports:
+     - "9094:9094"
+     - "9095:9095"
+   environment:
+     KAFKA_BROKER_ID: 2
+     KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:2181
+     KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+     KAFKA_DELETE_TOPIC_ENABLE: true
+     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+     KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9094,SASL_SSL://0.0.0.0:9095
+     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka222:9094,SASL_SSL://kafka222:9095
+     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,SASL_SSL:SASL_SSL
+     KAFKA_LISTENER_SECURITY_PROTOCOL: SASL_SSL
+     KAFKA_INTER_BROKER_LISTENER_NAME: SASL_SSL
+     KAFKA_SSL_KEYSTORE_FILENAME: kafka222.keystore.pkcs12
+     KAFKA_SSL_KEYSTORE_CREDENTIALS: kafka222_keystore_creds
+     KAFKA_SSL_KEY_CREDENTIALS: kafka222_sslkey_creds
+     KAFKA_SSL_TRUSTSTORE_FILENAME: kafka222.truststore.jks
+     KAFKA_SSL_TRUSTSTORE_CREDENTIALS: kafka222_truststore_creds
+     KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: https
+     KAFKA_SSL_CLIENT_AUTH: "required"
+     KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+     KAFKA_SUPER_USERS: "User:admin"
+     KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+     KAFKA_OPTS: -Djava.security.auth.login.config=/etc/kafka/secrets/kafka.sasl.jaas.conf
+                 -javaagent:/opt/jmx_prometheus_javaagent-0.20.0.jar=7071:/opt/kafka-metrics.yml
+     KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
+     KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "false"
+     KAFKA_SCHEMA_REGISTRY_URL: "schema-registry:8081"
+   volumes:
+     - ./monitoring/jmx_prometheus_javaagent-0.20.0.jar:/opt/jmx_prometheus_javaagent-0.20.0.jar
+     - ./monitoring/kafka-metrics.yml:/opt/kafka-metrics.yml
+     - ./ssl/kafka.sasl.jaas.conf:/etc/kafka/config/kafka.sasl.jaas.conf
+     - ./ssl:/etc/kafka/secrets
+     - ./setup:/setup
+   networks:
+      - cheburnet
+      
+      
+ kafka333:
+   image: confluentinc/cp-server:7.4.0
+   restart: always
+   hostname: kafka333
+   container_name: kafka333
+   depends_on:
+     - zookeeper-1
+   ports:
+     - "9096:9096"
+     - "9097:9097"
+   environment:
+     KAFKA_BROKER_ID: 3
+     KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:2181
+     KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+     KAFKA_DELETE_TOPIC_ENABLE: true
+     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+     KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9096,SASL_SSL://0.0.0.0:9097
+     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka333:9096,SASL_SSL://kafka333:9097
+     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,SASL_SSL:SASL_SSL
+     KAFKA_LISTENER_SECURITY_PROTOCOL: SASL_SSL
+     KAFKA_INTER_BROKER_LISTENER_NAME: SASL_SSL
+     KAFKA_SSL_KEYSTORE_FILENAME: kafka333.keystore.pkcs12
+     KAFKA_SSL_KEYSTORE_CREDENTIALS: kafka333_keystore_creds
+     KAFKA_SSL_KEY_CREDENTIALS: kafka333_sslkey_creds
+     KAFKA_SSL_TRUSTSTORE_FILENAME: kafka333.truststore.jks
+     KAFKA_SSL_TRUSTSTORE_CREDENTIALS: kafka333_truststore_creds
+     KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: https
+     KAFKA_SSL_CLIENT_AUTH: "required"
+     KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+     KAFKA_SUPER_USERS: "User:admin"
+     KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+     KAFKA_OPTS: -Djava.security.auth.login.config=/etc/kafka/secrets/kafka.sasl.jaas.conf
+                 -javaagent:/opt/jmx_prometheus_javaagent-0.20.0.jar=7071:/opt/kafka-metrics.yml
+     KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
+     KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "false"
+     KAFKA_SCHEMA_REGISTRY_URL: "schema-registry:8081"
+   volumes:
+     - ./monitoring/jmx_prometheus_javaagent-0.20.0.jar:/opt/jmx_prometheus_javaagent-0.20.0.jar
+     - ./monitoring/kafka-metrics.yml:/opt/kafka-metrics.yml
+     - ./ssl/kafka.sasl.jaas.conf:/etc/kafka/config/kafka.sasl.jaas.conf
+     - ./ssl:/etc/kafka/secrets
+     - ./setup:/setup
+   networks:
+      - cheburnet
+
+
+ kafka111-mirror:
+   image: confluentinc/cp-server:7.4.0
+   restart: always
+   container_name: kafka111-mirror
+   hostname: kafka111-mirror
+   ports:
+     - "9192:9192"
+     - "29192:29192"
+   depends_on:
+     - zookeeper-2
+     - kafka111
+     - kafka222
+     - kafka333
+   environment:
+     KAFKA_BROKER_ID: 4
+     KAFKA_ZOOKEEPER_CONNECT: 'zookeeper-2:2184'
+     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+     KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9192,EXTERNAL://0.0.0.0:29192
+     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka111-mirror:9192,EXTERNAL://localhost:29192
+     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+     KAFKA_SUPER_USERS: "User:admin"
+     KAFKA_SCHEMA_REGISTRY_URL: "schema-registry:8081"
+     KAFKA_OPTS: -javaagent:/opt/jmx_prometheus_javaagent-0.20.0.jar=7071:/opt/kafka-metrics.yml
+   networks:
+     - cheburnet
+   volumes:
+     - ./monitoring/jmx_prometheus_javaagent-0.20.0.jar:/opt/jmx_prometheus_javaagent-0.20.0.jar
+     - ./monitoring/kafka-metrics.yml:/opt/kafka-metrics.yml
+     - ./ssl/kafka.sasl.jaas.conf:/etc/kafka/config/kafka.sasl.jaas.conf
+     - ./ssl:/etc/kafka/secrets
+     - ./setup:/setup
+     
+
+ kafka222-mirror:
+   image: confluentinc/cp-server:7.4.0
+   restart: always
+   hostname: kafka222-mirror
+   container_name: kafka222-mirror
+   depends_on:
+     - zookeeper-2
+     - kafka111
+     - kafka222
+     - kafka333
+   ports:
+     - "9194:9194"
+   environment:
+     KAFKA_BROKER_ID: 5
+     KAFKA_ZOOKEEPER_CONNECT: 'zookeeper-2:2184'
+     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+     KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9194
+     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka222-mirror:9194
+     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+     KAFKA_SUPER_USERS: "User:admin"
+     KAFKA_SCHEMA_REGISTRY_URL: "schema-registry:8081"
+     KAFKA_OPTS: -javaagent:/opt/jmx_prometheus_javaagent-0.20.0.jar=7071:/opt/kafka-metrics.yml
+   networks:
+     - cheburnet
+   volumes:
+     - ./monitoring/jmx_prometheus_javaagent-0.20.0.jar:/opt/jmx_prometheus_javaagent-0.20.0.jar
+     - ./monitoring/kafka-metrics.yml:/opt/kafka-metrics.yml
+     - ./ssl/kafka.sasl.jaas.conf:/etc/kafka/config/kafka.sasl.jaas.conf
+     - ./ssl:/etc/kafka/secrets
+     - ./setup:/setup
+
+
+ kafka333-mirror:
+   image: confluentinc/cp-server:7.4.0
+   restart: always
+   hostname: kafka333-mirror
+   container_name: kafka333-mirror
+   depends_on:
+     - zookeeper-2
+     - kafka111
+     - kafka222
+     - kafka333
+   ports:
+     - "9196:9196"
+   environment:
+     KAFKA_BROKER_ID: 6
+     KAFKA_ZOOKEEPER_CONNECT: 'zookeeper-2:2184'
+     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+     KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9196
+     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka333-mirror:9196
+     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+     KAFKA_SUPER_USERS: "User:admin"
+     KAFKA_SCHEMA_REGISTRY_URL: "schema-registry:8081"
+     KAFKA_OPTS: -javaagent:/opt/jmx_prometheus_javaagent-0.20.0.jar=7071:/opt/kafka-metrics.yml
+   networks:
+     - cheburnet
+   volumes:
+     - ./monitoring/jmx_prometheus_javaagent-0.20.0.jar:/opt/jmx_prometheus_javaagent-0.20.0.jar
+     - ./monitoring/kafka-metrics.yml:/opt/kafka-metrics.yml
+     - ./ssl/kafka.sasl.jaas.conf:/etc/kafka/config/kafka.sasl.jaas.conf
+     - ./ssl:/etc/kafka/secrets
+     - ./setup:/setup
+
+
+ ui:
+   image: provectuslabs/kafka-ui:v0.7.0
+   container_name: ui
+   restart: always
+   ports:
+     - "127.0.0.1:8089:8080"
+   environment:
+     KAFKA_CLUSTERS_0_NAME: cluster-local
+     KAFKA_CLUSTERS_0_BOOTSTRAP_SERVERS: kafka111:9093,kafka111:9095,kafka111:9097
+     KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: SASL_SSL
+     KAFKA_CLUSTERS_0_PROPERTIES_SASL_MECHANISM: PLAIN
+     KAFKA_CLUSTERS_0_PROPERTIES_SASL_JAAS_CONFIG: org.apache.kafka.common.security.plain.PlainLoginModule required username="admin" password="your-password";
+     KAFKA_CLUSTERS_0_SSL_TRUSTSTORELOCATION: /etc/kafka/secrets/kafka111.truststore.jks
+     KAFKA_CLUSTERS_0_SSL_TRUSTSTOREPASSWORD: your-password
+     KAFKA_CLUSTERS_0_PROPERTIES_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: https
+     KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: kafka-connect
+     KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-connect:8083
+     KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
+     KAFKA_CLUSTERS_1_NAME: cluster-mirror
+     KAFKA_CLUSTERS_1_ZOOKEEPER: zookeeper-2:2184
+     KAFKA_CLUSTERS_1_BOOTSTRAP_SERVERS: kafka111-mirror:9192,kafka111-mirror:9194,kafka111-mirror:9196
+     KAFKA_CLUSTERS_1_SCHEMAREGISTRY: http://schema-registry:8081
+     DYNAMIC_CONFIG_ENABLED: "true"
+   volumes:
+     - ./ssl:/etc/kafka/secrets
+   networks:
+     - cheburnet
+
+
+ schema-registry:
+    image: confluentinc/cp-schema-registry:7.4.0
+    hostname: schema-registry
+    container_name: schema-registry
+    ports:
+      - '8081:8081'
+    depends_on:
+      - kafka111
+      - kafka222
+      - kafka333
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://schema-registry:8081
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka111:9093,kafka222:9095,kafka333:9097
+      SCHEMA_REGISTRY_KAFKA_BROKERS: PLAINTEXT://kafka111:9092,PLAINTEXT://kafka222:9094,PLAINTEXT://kafka333:9096
+      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper-1:2181
+      SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: SASL_SSL
+      SCHEMA_REGISTRY_KAFKASTORE_SASL_MECHANISM: PLAIN
+      SCHEMA_REGISTRY_KAFKASTORE_SASL_JAAS_CONFIG: org.apache.kafka.common.security.plain.PlainLoginModule required username="admin" password="your-password";
+      SCHEMA_REGISTRY_KAFKASTORE_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka111.truststore.jks
+      SCHEMA_REGISTRY_KAFKASTORE_SSL_TRUSTSTORE_PASSWORD: your-password
+      SCHEMA_REGISTRY_ACCESS_CONTROL_ALLOW_ORIGIN: "*"
+      SCHEMA_REGISTRY_ACCESS_CONTROL_ALLOW_METHODS: "GET,POST,PUT,DELETE OPTIONS"
+      SCHEMA_REGISTRY_DEBUG: 'true'
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas
+      SCHEMA_REGISTRY_KAFKASTORE_INIT_TIMEOUT: '120000'
+      SCHEMA_REGISTRY_KAFKASTORE_REPLICATION_FACTOR: '1'
+    networks:
+      - cheburnet
+    volumes:
+      - ./ssl:/etc/kafka/secrets
+
+
+ kafka-connect:
+   image: confluentinc/cp-kafka-connect:7.7.1
+   hostname: kafka-connect
+   container_name: kafka-connect
+   depends_on:
+     - kafka111
+     - kafka222
+     - kafka333
+     - schema-registry
+     - elasticsearch
+   ports:
+     - "8083:8083"
+     - "9875:9875"
+     - "9876:9876"
+   networks:
+     - cheburnet   
+   environment:
+     CONNECT_BOOTSTRAP_SERVERS: 'kafka111:9093,kafka222:9095,kafka333:9097'
+     CONNECT_REST_ADVERTISED_HOST_NAME: localhost # kafka-connect
+     CONNECT_REST_PORT: '8083'
+     CONNECT_GROUP_ID: 'kafka-connect-group'
+     CONNECT_CONFIG_STORAGE_TOPIC: 'connect-config-storage'
+     CONNECT_OFFSET_STORAGE_TOPIC: 'connect-offset-storage'
+     CONNECT_STATUS_STORAGE_TOPIC: 'connect-status-storage'
+     CONNECT_OFFSET_FLUSH_INTERVAL_MS: 10000
+     CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 2
+     CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 2
+     CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 2
+     # по умолчанию для коннекторов
+     CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+     CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+     CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+     CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+     CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: 'false' # для es
+     CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+     CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+     CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components,/etc/kafka-connect/jars"
+     # metrics for Prometheus
+     KAFKA_JMX_PORT: '9875'
+     KAFKA_OPTS: "-javaagent:/opt/jmx_prometheus_javaagent-0.15.0.jar=9876:/opt/kafka-connect.yml"
+     # Read connection password from file
+     CONNECT_CONFIG_PROVIDERS: "file"
+     CONNECT_CONFIG_PROVIDERS_FILE_CLASS: "org.apache.kafka.common.config.provider.FileConfigProvider"
+     CONNECT_LOG4J_LOGGERS: org.apache.zookeeper=ERROR,org.I0Itec.zkclient=ERROR,org.reflections=ERROR
+     # Доступы и шифрование
+     CONNECT_SECURITY_PROTOCOL: SASL_SSL
+     CONNECT_SASL_MECHANISM: PLAIN
+     CONNECT_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka111.truststore.jks
+     CONNECT_SSL_TRUSTSTORE_PASSWORD: your-password
+     CONNECT_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/kafka111.keystore.pkcs12
+     CONNECT_SSL_KEYSTORE_PASSWORD: your-password
+     CONNECT_PRODUCER_SASL_MECHANISM: 'PLAIN'
+     CONNECT_CONSUMER_SASL_MECHANISM: 'PLAIN'
+     CONNECT_PRODUCER_SECURITY_PROTOCOL: 'PLAINTEXT'
+     CONNECT_CONSUMER_SECURITY_PROTOCOL: 'SASL_SSL'
+     CONNECT_PRODUCER_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"admin\" password=\"your-password\";"
+     CONNECT_CONSUMER_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"admin\" password=\"your-password\";"
+     CONNECT_SASL_JAAS_CONFIG: org.apache.kafka.common.security.plain.PlainLoginModule required username="admin" password="your-password";
+     CONNECT_CONSUMER_MAX_POLL_RECORDS: 10
+   volumes:
+     - ./kafka-connect/jmx_prometheus_javaagent-0.15.0.jar:/opt/jmx_prometheus_javaagent-0.15.0.jar
+     - ./confluent-hub-components/:/etc/kafka-connect/jars
+     - ./kafka-connect/kafka-connect.yml:/opt/kafka-connect.yml
+     - ./ssl:/etc/kafka/secrets
+
+
+ mirror-maker:
+   image: confluentinc/cp-kafka:7.4.4
+   container_name: mirror-maker
+   hostname: mirror-maker
+   depends_on:
+     - zookeeper-2
+     - kafka111
+     - kafka222
+     - kafka333
+     - kafka111-mirror
+     - kafka222-mirror
+     - kafka333-mirror
+   volumes:
+     - ./ssl:/etc/kafka/secrets
+     - ./ssl/kafka.sasl.jaas.conf:/etc/kafka/config/kafka.sasl.jaas.conf
+     - ./mirror-maker:/etc/mirror-maker
+   command: sh -c "kafka-mirror-maker --consumer.config /etc/mirror-maker/consumer.cfg --producer.config /etc/mirror-maker/producer.cfg --whitelist items,client-search,filtered-items,orders,recommendations,analytic-topic --num.streams 1"
+   networks:
+     - cheburnet  
+
+
+ elasticsearch:
+   image: docker.elastic.co/elasticsearch/elasticsearch:8.5.1
+   container_name: elasticsearch
+   environment:
+     - discovery.type=single-node
+     - xpack.security.enabled=false
+     - bootstrap.memory_lock=true
+     - 'ES_JAVA_OPTS=-Xms1g -Xmx1g'
+   ulimits:
+     memlock:
+       soft: -1
+       hard: -1
+   ports:
+     - '9200:9200'
+     - '9300:9300'
+   networks:
+     - cheburnet
+
+
+ kibana:
+   image: docker.elastic.co/kibana/kibana:8.5.1
+   container_name: kibana
+   depends_on:
+     - elasticsearch
+   ports:
+     - '5601:5601'
+   environment:
+     ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+   networks:
+     - cheburnet
+     
+     
+ kafka-tools:
+   image: confluentinc/cp-server:7.4.0
+   container_name: kafka-tools
+   hostname: kafka-tools
+   restart: always
+   depends_on:
+     - kafka111
+   environment:
+     KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:2181 
+     KAFKA_LISTENER_SECURITY_PROTOCOL: SASL_SSL
+     KAFKA_INTER_BROKER_LISTENER_NAME: SASL_SSL
+     KAFKA_SSL_KEYSTORE_FILENAME: kafka111.keystore.pkcs12
+     KAFKA_SSL_KEYSTORE_CREDENTIALS: kafka111_keystore_creds
+     KAFKA_SSL_KEY_CREDENTIALS: kafka111_sslkey_creds
+     KAFKA_SSL_TRUSTSTORE_FILENAME: kafka111.truststore.jks
+     KAFKA_SSL_TRUSTSTORE_CREDENTIALS: kafka111_truststore_creds
+     KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: https
+     KAFKA_SSL_CLIENT_AUTH: "required"
+     KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+     KAFKA_SUPER_USERS: "User:admin"
+     KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+     KAFKA_OPTS: -Djava.security.auth.login.config=/etc/kafka/secrets/kafka.sasl.jaas.conf
+     KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
+     KAFKA_SCHEMA_REGISTRY_URL: "schema-registry:8081"
+   volumes:
+     - ./ssl/kafka.sasl.jaas.conf:/etc/kafka/config/kafka.sasl.jaas.conf
+     - ./ssl:/etc/kafka/secrets
+     - ./setup:/setup
+   networks:
+     - cheburnet
+   command: 'sleep infinity'
+   
+   
+networks:
+ cheburnet:
+   driver: bridge

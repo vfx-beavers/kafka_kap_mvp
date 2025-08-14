@@ -1,0 +1,37 @@
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+           - alertmanager:9093
+
+rule_files:
+ - "alert.rules.yml"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'kafka-connect'
+    static_configs:
+      - targets: ['kafka-connect:9876']
+
+  - job_name: 'kafka-main'
+    scrape_interval: 5s
+    static_configs:
+      - targets:
+          - 'kafka111:7071'
+          - 'kafka222:7071'
+          - 'kafka333:7071'
+
+  - job_name: 'kafka-mirror'
+    scrape_interval: 5s
+    static_configs:
+      - targets:
+          - 'kafka111-mirror:7071'
+          - 'kafka222-mirror:7071'
+          - 'kafka333-mirror:7071'

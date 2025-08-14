@@ -1,0 +1,22 @@
+version: '3.9'
+
+services:
+ stream_filter:
+   build:
+      context: stream_filter
+      dockerfile: Dockerfile.python
+   container_name: stream_filter
+   environment:
+      PYTHONUNBUFFERED: 1
+      KAFKA_BOOTSTRAP_SERVERS: kafka111:9093
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      KAFKA_ITEMS_TOPIC: "items"
+      KAFKA_ITEMS_FILTERED_TOPIC: "filtered-items"
+   networks:
+      - cheburnet
+   volumes:
+      - ./ssl:/etc/kafka/secrets
+
+networks:
+ cheburnet:
+   driver: bridge

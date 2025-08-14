@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ItemsSchema",
+  "type": "object",
+  "properties": {
+    "product_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "price": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string"
+        }
+      }
+    },
+    "category": {
+      "type": "string"
+    },
+    "brand": {
+      "type": "string"
+    },
+    "stock": {
+      "type": "object",
+      "properties": {
+        "available": {
+          "type": "integer"
+        },
+        "reserved": {
+          "type": "integer"
+        }
+      }
+    },
+    "sku": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "specifications": {
+      "type": "object",
+      "properties": {
+        "weight": {
+          "type": "string"
+        },
+        "dimensions": {
+          "type": "string"
+        },
+        "battery_life": {
+          "type": "string"
+        },
+        "water_resistance": {
+          "type": "string"
+        }
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "index": {
+      "type": "string"
+    },
+    "store_id": {
+      "type": "string"
+    }
+  }
+}

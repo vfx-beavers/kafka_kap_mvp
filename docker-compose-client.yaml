@@ -1,0 +1,25 @@
+version: '3.9'
+
+services:
+ client_api:
+   image: python:3.11-slim
+   container_name: client_api
+   working_dir: /app
+   environment:
+      KAFKA_ITEMS_TOPIC: "items"
+      KAFKA_BOOTSTRAP_SERVERS: kafka111:9093
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+   
+ # command: bash -c "pip install --break-system-packages --no-cache-dir -r requirements.txt && python3 client_api.py"     # авто запуск
+   command: bash -c "pip install --break-system-packages --no-cache-dir -r requirements.txt && tail -f /dev/null"  # ручной запуск
+   volumes:
+      - ./client_api:/app
+      - ./ssl:/etc/kafka/secrets
+   networks:
+     - cheburnet
+
+      
+
+networks:
+ cheburnet:
+   driver: bridge

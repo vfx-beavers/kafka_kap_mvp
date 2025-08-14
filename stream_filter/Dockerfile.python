@@ -1,0 +1,23 @@
+FROM python:3.9-slim
+
+# рабочая директория
+WORKDIR /tmp/app
+
+USER root
+
+# создание папок и перенос
+RUN mkdir -p /tmp/app
+RUN mkdir -p /tmp/app/lib
+
+
+COPY /filter.py /tmp/app/filter.py
+#COPY /lib/items_stop_list.json /tmp/app/lib/items_stop_list.json
+
+COPY /requirements.txt /tmp/app/requirements.txt
+
+# установка библиотек
+RUN pip3 install --break-system-packages --no-cache-dir -r /tmp/app/requirements.txt
+
+# запуск приложения
+RUN chmod +x /tmp/app/filter.py
+ENTRYPOINT ["faust", "-A", "filter", "worker", "-l", "info"]

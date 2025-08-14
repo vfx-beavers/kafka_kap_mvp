@@ -1,0 +1,19 @@
+route:
+  group_by: ['alertname']
+  group_wait: 15s
+  group_interval: 6m
+  repeat_interval: 10m
+  receiver: 'telegram'
+
+receivers:
+  - name: 'telegram'
+    telegram_configs:
+      - api_url: 'https://api.telegram.org'
+        bot_token: '8251558429:AAG-Ys6wa4ZoRJURzjXumCnPUzAfgKID-7M'
+        chat_id: 4866947731
+        send_resolved: true
+        message: '{{ range .Alerts }}
+          {{ if eq .Status "firing" }}Жопка{{ else }}Норм{{ end }} [{{ .Status | toUpper }}] {{ .Labels.alertname }}
+          {{ .Annotations.summary }}
+          {{ .Annotations.description }}
+          {{ end }}'

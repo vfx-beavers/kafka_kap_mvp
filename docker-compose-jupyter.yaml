@@ -1,0 +1,44 @@
+version: '3.9'
+
+services:
+ kafka_to_hdfs:
+  image: python:3.11-slim
+  container_name: kafka_to_hdfs
+  working_dir: /app
+ # command: bash -c "pip install --break-system-packages --no-cache-dir -r requirements.txt && python3 kafka_to_hdfs.py"     # авто запуск
+  command: bash -c "pip install -r requirements.txt && tail -f /dev/null"  # ручной запуск
+  environment:
+    KAFKA_BOOTSTRAP_SERVERS: kafka111-mirror:9192
+    SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+    HDFS_URI: "http://hadoop-namenode:9870"
+  networks:
+     - cheburnet
+  volumes:
+    - ./hadoop/kafka_to_hdfs:/app
+    - ./ssl:/etc/kafka/secrets
+
+ pyspark-notebook:
+  image: jupyter/pyspark-notebook:latest
+  container_name: pyspark-notebook
+  working_dir: /home/jovyan
+  networks:
+      - cheburnet
+  environment:
+      JUPYTER_ALLOW_INSECURE_WRITES: 1
+      KAFKA_BOOTSTRAP_SERVERS: kafka111-mirror:9192
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      HDFS_URI: "http://hadoop-namenode:9870"
+  ports:
+      - "8888:8888"
+  volumes:
+      - ./notebook:/home/jovyan
+      - ./hadoop/kafka_to_hdfs:/app
+      - ./ssl:/etc/kafka/secrets
+
+volumes:
+  notebook:
+
+  
+networks:
+ cheburnet:
+   driver: bridge

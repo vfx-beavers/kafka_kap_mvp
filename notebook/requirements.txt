@@ -1,0 +1,12 @@
+hdfs
+confluent-kafka==2.3.0
+kafka-python==2.2.15
+httpx
+attrs
+cachetools
+authlib
+pyspark
+requests
+referencing
+python-schema-registry-client
+pyhdfs
